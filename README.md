@@ -70,11 +70,11 @@ pip install -r requirements.txt
 2. **Run the Script**:
    - For Unix-based systems:
      ```bash
-     python3 article_scraper_gui.py
+     python3 DelfiMarkdownScraper.py
      ```
    - For Windows:
      ```batch
-     python article_scraper_gui.py
+     python DelfiMarkdownScraper.py
      ```
 
 3. **Use the GUI**:

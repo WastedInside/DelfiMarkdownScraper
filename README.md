@@ -1,7 +1,4 @@
-# DelfiMarkdownScraper
-
-
-# Article Scraper with GUI
+# DelfiMarkdownScraper - Article Scraper with GUI
 
 This Python script allows you to scrape articles from a list of URLs and save the content in Markdown format. The script provides a simple graphical user interface (GUI) for selecting the URLs file, configuration file, and the directory where the scraped articles will be saved. Additionally, it logs all operations in a `log.txt` file in the same directory as the scraped articles.
 

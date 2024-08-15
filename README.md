@@ -57,14 +57,14 @@ pip install -r requirements.txt
 1. **Prepare Files**:
    - Create a text file containing the list of URLs you want to scrape (one URL per line).
    - Create a JSON configuration file specifying the HTML tag and class name for extracting the article content. Example:
-     ```json
-     {
+```json
+{
     "contesnt_tag": "div",
     "content_class": "article-content",
     "title_tag": "h1",
     "title_class": "article-title"
-  }
-     ```
+}
+```
 
 2. **Run the Script**:
    - For Unix-based systems:
@@ -97,4 +97,4 @@ pip install -r requirements.txt
 
 ## Contributing
 
-Feel free to fork this repository and submit pull requests. For major changes, please open an issue to discuss what you would like to change.
+Feel free to fork this repository and submit pull requests. 

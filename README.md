@@ -84,14 +84,14 @@ pip install -r requirements.txt
    - Scraped articles will be saved in Markdown format in the selected save directory.
    - The console output will be displayed in the GUI and saved to `log.txt` in the same directory.
 
-## Example Configuration File
+## Example Configuration File for delfi.lv
 
 ```json
 {
     "content_tag": "div",
     "content_class": "article-body-container row",
     "title_tag": "h1",
-    "title_class": "article-title"
+    "title_class": "text-size-1 bg-delfi-black fw-semibold"
 }
 ```
 

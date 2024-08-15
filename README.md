@@ -16,7 +16,7 @@ This Python script allows you to scrape articles from a list of URLs and save th
 - Required Python packages (listed in `requirements.txt`):
   - `requests`
   - `beautifulsoup4`
-  - `html2text`
+  - `markdownify`
   - `tkinter` (included with Python on most systems)
 
 ## Installation
@@ -59,9 +59,11 @@ pip install -r requirements.txt
    - Create a JSON configuration file specifying the HTML tag and class name for extracting the article content. Example:
      ```json
      {
-         "tag": "div",
-         "class_name": "article-content"
-     }
+    "contesnt_tag": "div",
+    "content_class": "article-content",
+    "title_tag": "h1",
+    "title_class": "article-title"
+  }
      ```
 
 2. **Run the Script**:
@@ -75,7 +77,7 @@ pip install -r requirements.txt
      ```
 
 3. **Use the GUI**:
-   - Use the "Browse" buttons to select the URLs file, configuration file, and save directory.
+   - Use the "Browse" buttons to select the URLs file and save directory. Configs are loaded from configs directory.
    - Click "Start Scraping" to begin the process.
 
 4. **View Output**:
@@ -86,8 +88,10 @@ pip install -r requirements.txt
 
 ```json
 {
-    "tag": "div",
-    "class_name": "article-body"
+    "content_tag": "div",
+    "content_class": "article-body-container row",
+    "title_tag": "h1",
+    "title_class": "article-title"
 }
 ```
 

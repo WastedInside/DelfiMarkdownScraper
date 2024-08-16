@@ -35,7 +35,7 @@ def append_to_console(message, log_file):
         log.write(formatted_message)
 
 # Function to scrape a single URL and save its content
-def scrape_article(url, tag, class_name, title_tag, title_class, save_dir, log_file):
+def scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, subtitle_class, save_dir, log_file):
     global untitled_article_count
     try:
         append_to_console(f"Scraping {url}...", log_file)
@@ -55,6 +55,13 @@ def scrape_article(url, tag, class_name, title_tag, title_class, save_dir, log_f
         else:
             untitled_article_count += 1
             article_title = f"Untitled Article {untitled_article_count}"
+
+        # Extract the subtitle (if configured)
+        subtitle = ""
+        if subtitle_tag and subtitle_class:
+            subtitle_element = soup.find(subtitle_tag, class_=subtitle_class)
+            if subtitle_element:
+                subtitle = subtitle_element.text.strip()
 
         # Extract the article content using the tag and class_name
         if tag and class_name:
@@ -83,7 +90,9 @@ def scrape_article(url, tag, class_name, title_tag, title_class, save_dir, log_f
 
         # Save the article content to a Markdown file
         with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(f"# {article_title}\n\n")  # Add the title as a header
+            file.write(f"# {article_title}\n\n")
+            if subtitle:
+                file.write(f"## {subtitle}\n\n")
             file.write(markdown_content)
 
         append_to_console(f"Article '{article_title}' from {url} has been saved to {file_path}", log_file)
@@ -106,7 +115,9 @@ def process_urls(urls_file_path, config, save_dir):
                 class_name = config.get("content_class")
                 title_tag = config.get("title_tag")
                 title_class = config.get("title_class")
-                scrape_article(url, tag, class_name, title_tag, title_class, save_dir, log_file)
+                subtitle_tag = config.get("subtitle_tag")
+                subtitle_class = config.get("subtitle_class")
+                scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, subtitle_class, save_dir, log_file)
 
         append_to_console("All articles have been saved successfully.", log_file)
     except Exception as e:

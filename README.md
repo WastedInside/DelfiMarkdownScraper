@@ -10,6 +10,8 @@ This Python script allows you to scrape articles from a list of URLs and save th
 - **Console Output**: Displays real-time console output in the GUI.
 - **Log File**: Saves console output to `log.txt` in the save directory.
 
+  ![Alt text](ss.png)
+
 ## Requirements
 
 - Python 3.x

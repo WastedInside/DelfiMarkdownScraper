@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 from datetime import datetime
 import re
+from urllib.parse import urlparse
 
 SETTINGS_FILE = 'scraper_settings.json'
 untitled_article_count = 0
@@ -99,8 +100,22 @@ def scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, s
     except Exception as e:
         append_to_console(f"Failed to scrape {url}: {e}", log_file)
 
+
+        # Load the configuration file based on the domain
+
+def load_config_for_domain(domain):
+    # Remove 'www.' if present and replace '.' with '_'
+    config_filename = domain.replace('www.', '').replace('.', '_') + '.json'
+    config_path = f"./configs/{config_filename}"
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as file:
+            return json.load(file)
+    else:
+        return None
+
+
 # Main function to process URLs from a file with site configurations
-def process_urls(urls_file_path, config, save_dir):
+def process_urls(urls_file_path, save_dir):
     global untitled_article_count
     untitled_article_count = 0  # Reset the counter at the start of each scraping session
     log_file = os.path.join(save_dir, 'log.txt')  # Log file path
@@ -111,13 +126,23 @@ def process_urls(urls_file_path, config, save_dir):
         for url in urls:
             url = url.strip()
             if url:
-                tag = config.get("content_tag")
-                class_name = config.get("content_class")
-                title_tag = config.get("title_tag")
-                title_class = config.get("title_class")
-                subtitle_tag = config.get("subtitle_tag")
-                subtitle_class = config.get("subtitle_class")
-                scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, subtitle_class, save_dir, log_file)
+                domain = urlparse(url).netloc
+                append_to_console(f"Processing URL: {url}", log_file)
+                append_to_console(f"Extracted domain: {domain}", log_file)
+                config = load_config_for_domain(domain)
+                if config:
+                    append_to_console(f"Config loaded for {domain}", log_file)
+                    tag = config.get("content_tag")
+                    class_name = config.get("content_class")
+                    title_tag = config.get("title_tag")
+                    title_class = config.get("title_class")
+                    subtitle_tag = config.get("subtitle_tag")
+                    subtitle_class = config.get("subtitle_class")
+                    scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, subtitle_class, save_dir, log_file)
+                else:
+                    append_to_console(f"No configuration file found for domain: {domain}", log_file)
+            else:
+                append_to_console("Empty URL encountered", log_file)
 
         append_to_console("All articles have been saved successfully.", log_file)
     except Exception as e:
@@ -149,18 +174,17 @@ def load_configs():
 # Modified start_scraping function
 def start_scraping():
     urls_file_path = urls_entry.get()
-    config = configs[config_var.get()]
     save_dir = save_entry.get()
     
-    if not urls_file_path or not config or not save_dir:
+    if not urls_file_path or not save_dir:
         messagebox.showwarning("Input Error", "Please fill all fields.")
         return
 
-    save_settings({'last_urls_file': urls_file_path, 'last_save_dir': save_dir, 'last_config': config_var.get()})
+    save_settings({'last_urls_file': urls_file_path, 'last_save_dir': save_dir})
 
     log_file = os.path.join(save_dir, 'log.txt')
     append_to_console("Starting the scraping process...", log_file)
-    process_urls(urls_file_path, config, save_dir)
+    process_urls(urls_file_path, save_dir)
 
 # Create the main window
 root = tk.Tk()
@@ -183,16 +207,12 @@ urls_entry.grid(row=0, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
 urls_entry.insert(0, settings.get('last_urls_file', ''))
 ttk.Button(main_frame, text="Browse", command=lambda: browse_file(urls_entry)).grid(row=0, column=2, padx=5, pady=5)
 
-# Config dropdown
-ttk.Label(main_frame, text="Config:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
+# Config info label (replace the dropdown)
+ttk.Label(main_frame, text="Configurations:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
 configs = load_configs()
-config_var = tk.StringVar(root)
-if configs:
-    config_var.set(settings.get('last_config', next(iter(configs))))
-else:
-    config_var.set("No configs found")
-config_dropdown = ttk.Combobox(main_frame, textvariable=config_var, values=list(configs.keys()), state="readonly", width=47)
-config_dropdown.grid(row=1, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
+config_count = len(configs)
+config_info = f"{config_count} configurations loaded dynamically."
+ttk.Label(main_frame, text=config_info).grid(row=1, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
 
 # Save directory
 ttk.Label(main_frame, text="Save Directory:").grid(row=2, column=0, padx=5, pady=5, sticky='e')

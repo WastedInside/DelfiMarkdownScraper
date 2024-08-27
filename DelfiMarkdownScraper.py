@@ -24,26 +24,26 @@ def save_settings(settings):
         json.dump(settings, f)
 
 # Function to append messages to the console and log file
-def append_to_console(message, log_file, message_type='info', console_only=False):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def append_to_console(message, log_file, message_type='info', console_only=True):
+    now = datetime.now().strftime("%H:%M:%S")
     formatted_message = f"[{now}] {message}\n"
     
-    # Append to the console with color coding
-    if message_type == 'success':
-        console.tag_config('success', foreground='green')
-        console.insert(tk.END, formatted_message, 'success')
-    elif message_type == 'error':
-        console.tag_config('error', foreground='red')
-        console.insert(tk.END, formatted_message, 'error')
-    else:
-        console.insert(tk.END, formatted_message)
+    # Append to the console only if console_only is True
+    if console_only:
+        if message_type == 'success':
+            console.tag_config('success', foreground='green')
+            console.insert(tk.END, formatted_message, 'success')
+        elif message_type == 'error':
+            console.tag_config('error', foreground='red')
+            console.insert(tk.END, formatted_message, 'error')
+        else:
+            console.insert(tk.END, formatted_message)
+        
+        console.yview(tk.END)  # Auto-scroll to the end
     
-    console.yview(tk.END)  # Auto-scroll to the end
-    
-    # Append to the log file if not console_only
-    if not console_only:
-        with open(log_file, 'a', encoding='utf-8') as log:
-            log.write(formatted_message)
+    # Always append to the log file
+    with open(log_file, 'a', encoding='utf-8') as log:
+        log.write(formatted_message)
 
 def get_domain(url):
     return urlparse(url).netloc
@@ -53,8 +53,6 @@ def scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, s
     global untitled_article_count
     try:
         domain = get_domain(url)
-        append_to_console(f"Scraping {domain}...", log_file, console_only=True)
-        append_to_console(f"Scraping {url}...", log_file)
         response = requests.get(url)
         response.raise_for_status()  # Check for request errors
 
@@ -112,9 +110,10 @@ def scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, s
             file.write(markdown_content)
 
         append_to_console(f"Article '{article_title}' has been saved", log_file, 'success', console_only=True)
-        append_to_console(f"Article '{article_title}' from {url} has been saved to {file_path}", log_file, 'success')
+        # This line will only be written to the log file, not displayed in the console
+        append_to_console(f"Article '{article_title}' from {url} has been saved to {file_path}", log_file, 'success', console_only=False)
     except Exception as e:
-        append_to_console(f"Failed to scrape {domain}", log_file, 'error', console_only=True)
+        append_to_console(f"Failed to scrape article from {domain}", log_file, 'error', console_only=True)
         append_to_console(f"Failed to scrape {url}: {e}", log_file, 'error')
 
 
@@ -145,7 +144,7 @@ def process_urls(urls_file_path, save_dir):
             if url:
                 domain = get_domain(url)
                 append_to_console(f"Processing: {domain}", log_file, console_only=True)
-                append_to_console(f"Processing URL: {url}", log_file)
+                append_to_console(f"Processing URL: {url}", log_file, console_only=False)
                 append_to_console(f"Extracted domain: {domain}", log_file)
                 config = load_config_for_domain(domain)
                 if config:
@@ -158,12 +157,12 @@ def process_urls(urls_file_path, save_dir):
                     subtitle_class = config.get("subtitle_class")
                     scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, subtitle_class, save_dir, log_file)
                 else:
-                    append_to_console(f"No configuration found for: {domain}", log_file, 'error', console_only=True)
-                    append_to_console(f"No configuration file found for domain: {domain}", log_file, 'error')
+                    append_to_console(f"No configuration found for: {domain}. Article not saved.", log_file, 'error', console_only=False)
+                    append_to_console(f"No configuration file found for domain: {domain}. Article not saved.", log_file, 'error')
             else:
                 append_to_console("Empty URL encountered", log_file)
 
-        append_to_console("All articles have been saved successfully.", log_file, 'success')
+        append_to_console("Processing completed. Check the log for details.", log_file, 'success')
     except Exception as e:
         append_to_console(f"An error occurred: {e}", log_file, 'error')
 

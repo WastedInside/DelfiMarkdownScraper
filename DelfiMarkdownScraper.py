@@ -7,6 +7,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 from datetime import datetime
 import re
+from urllib.parse import urlparse
+import subprocess
 
 SETTINGS_FILE = 'scraper_settings.json'
 untitled_article_count = 0
@@ -22,23 +24,35 @@ def save_settings(settings):
         json.dump(settings, f)
 
 # Function to append messages to the console and log file
-def append_to_console(message, log_file):
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def append_to_console(message, log_file, message_type='info', console_only=True):
+    now = datetime.now().strftime("%H:%M:%S")
     formatted_message = f"[{now}] {message}\n"
     
-    # Append to the console
-    console.insert(tk.END, formatted_message)
-    console.yview(tk.END)  # Auto-scroll to the end
+    # Append to the console only if console_only is True
+    if console_only:
+        if message_type == 'success':
+            console.tag_config('success', foreground='green')
+            console.insert(tk.END, formatted_message, 'success')
+        elif message_type == 'error':
+            console.tag_config('error', foreground='red')
+            console.insert(tk.END, formatted_message, 'error')
+        else:
+            console.insert(tk.END, formatted_message)
+        
+        console.yview(tk.END)  # Auto-scroll to the end
     
-    # Append to the log file
+    # Always append to the log file
     with open(log_file, 'a', encoding='utf-8') as log:
         log.write(formatted_message)
+
+def get_domain(url):
+    return urlparse(url).netloc
 
 # Function to scrape a single URL and save its content
 def scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, subtitle_class, save_dir, log_file):
     global untitled_article_count
     try:
-        append_to_console(f"Scraping {url}...", log_file)
+        domain = get_domain(url)
         response = requests.get(url)
         response.raise_for_status()  # Check for request errors
 
@@ -95,12 +109,29 @@ def scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, s
                 file.write(f"## {subtitle}\n\n")
             file.write(markdown_content)
 
-        append_to_console(f"Article '{article_title}' from {url} has been saved to {file_path}", log_file)
+        append_to_console(f"Article '{article_title}' has been saved", log_file, 'success', console_only=True)
+        # This line will only be written to the log file, not displayed in the console
+        append_to_console(f"Article '{article_title}' from {url} has been saved to {file_path}", log_file, 'success', console_only=False)
     except Exception as e:
-        append_to_console(f"Failed to scrape {url}: {e}", log_file)
+        append_to_console(f"Failed to scrape article from {domain}", log_file, 'error', console_only=True)
+        append_to_console(f"Failed to scrape {url}: {e}", log_file, 'error')
+
+
+        # Load the configuration file based on the domain
+
+def load_config_for_domain(domain):
+    # Remove 'www.' if present and replace '.' with '_'
+    config_filename = domain.replace('www.', '').replace('.', '_') + '.json'
+    config_path = f"./configs/{config_filename}"
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as file:
+            return json.load(file)
+    else:
+        return None
+
 
 # Main function to process URLs from a file with site configurations
-def process_urls(urls_file_path, config, save_dir):
+def process_urls(urls_file_path, save_dir):
     global untitled_article_count
     untitled_article_count = 0  # Reset the counter at the start of each scraping session
     log_file = os.path.join(save_dir, 'log.txt')  # Log file path
@@ -111,17 +142,29 @@ def process_urls(urls_file_path, config, save_dir):
         for url in urls:
             url = url.strip()
             if url:
-                tag = config.get("content_tag")
-                class_name = config.get("content_class")
-                title_tag = config.get("title_tag")
-                title_class = config.get("title_class")
-                subtitle_tag = config.get("subtitle_tag")
-                subtitle_class = config.get("subtitle_class")
-                scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, subtitle_class, save_dir, log_file)
+                domain = get_domain(url)
+                append_to_console(f"Processing: {domain}", log_file, console_only=True)
+                append_to_console(f"Processing URL: {url}", log_file, console_only=False)
+                append_to_console(f"Extracted domain: {domain}", log_file)
+                config = load_config_for_domain(domain)
+                if config:
+                    append_to_console(f"Config loaded for {domain}", log_file, 'success')
+                    tag = config.get("content_tag")
+                    class_name = config.get("content_class")
+                    title_tag = config.get("title_tag")
+                    title_class = config.get("title_class")
+                    subtitle_tag = config.get("subtitle_tag")
+                    subtitle_class = config.get("subtitle_class")
+                    scrape_article(url, tag, class_name, title_tag, title_class, subtitle_tag, subtitle_class, save_dir, log_file)
+                else:
+                    append_to_console(f"No configuration found for: {domain}. Article not saved.", log_file, 'error', console_only=False)
+                    append_to_console(f"No configuration file found for domain: {domain}. Article not saved.", log_file, 'error')
+            else:
+                append_to_console("Empty URL encountered", log_file)
 
-        append_to_console("All articles have been saved successfully.", log_file)
+        append_to_console("Processing completed. Check the log for details.", log_file, 'success')
     except Exception as e:
-        append_to_console(f"An error occurred: {e}", log_file)
+        append_to_console(f"An error occurred: {e}", log_file, 'error')
 
 # GUI for selecting files and directories
 def browse_file(entry):
@@ -129,7 +172,7 @@ def browse_file(entry):
     if file_path:
         entry.delete(0, tk.END)
         entry.insert(0, file_path)
-        save_settings({'last_urls_file': file_path, 'last_save_dir': save_entry.get(), 'last_config': config_var.get()})
+        save_settings({'last_urls_file': file_path, 'last_save_dir': save_entry.get()})
 
 def browse_directory(entry):
     dir_path = filedialog.askdirectory()
@@ -149,23 +192,39 @@ def load_configs():
 # Modified start_scraping function
 def start_scraping():
     urls_file_path = urls_entry.get()
-    config = configs[config_var.get()]
     save_dir = save_entry.get()
     
-    if not urls_file_path or not config or not save_dir:
+    if not urls_file_path or not save_dir:
         messagebox.showwarning("Input Error", "Please fill all fields.")
         return
 
-    save_settings({'last_urls_file': urls_file_path, 'last_save_dir': save_dir, 'last_config': config_var.get()})
+    save_settings({'last_urls_file': urls_file_path, 'last_save_dir': save_dir})
 
     log_file = os.path.join(save_dir, 'log.txt')
     append_to_console("Starting the scraping process...", log_file)
-    process_urls(urls_file_path, config, save_dir)
+    process_urls(urls_file_path, save_dir)
+
+def clear_console():
+    console.delete(1.0, tk.END)
+    append_to_console("Console cleared.", log_file, 'info', console_only=True)
+
+def open_save_location():
+    save_dir = save_entry.get()
+    if os.path.exists(save_dir):
+        if os.name == 'nt':  # For Windows
+            os.startfile(save_dir)
+        elif os.name == 'posix':  # For macOS and Linux
+            subprocess.call(('open', save_dir))
+        else:
+            append_to_console("Unsupported operating system for opening folders.", log_file, 'error')
+    else:
+        append_to_console("Save directory does not exist.", log_file, 'error')
 
 # Create the main window
+
 root = tk.Tk()
 root.title("Delfi Markdown Scraper")
-root.geometry("600x500")  # Set a fixed size for the window
+root.geometry("600x550")  # Increased height to accommodate new buttons
 
 # Create a main frame
 main_frame = ttk.Frame(root, padding="10")
@@ -183,16 +242,12 @@ urls_entry.grid(row=0, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
 urls_entry.insert(0, settings.get('last_urls_file', ''))
 ttk.Button(main_frame, text="Browse", command=lambda: browse_file(urls_entry)).grid(row=0, column=2, padx=5, pady=5)
 
-# Config dropdown
-ttk.Label(main_frame, text="Config:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
+# Config info label (replace the dropdown)
+ttk.Label(main_frame, text="Configurations:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
 configs = load_configs()
-config_var = tk.StringVar(root)
-if configs:
-    config_var.set(settings.get('last_config', next(iter(configs))))
-else:
-    config_var.set("No configs found")
-config_dropdown = ttk.Combobox(main_frame, textvariable=config_var, values=list(configs.keys()), state="readonly", width=47)
-config_dropdown.grid(row=1, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
+config_count = len(configs)
+config_info = f"{config_count} configurations loaded dynamically."
+ttk.Label(main_frame, text=config_info).grid(row=1, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
 
 # Save directory
 ttk.Label(main_frame, text="Save Directory:").grid(row=2, column=0, padx=5, pady=5, sticky='e')
@@ -202,16 +257,25 @@ save_entry.insert(0, settings.get('last_save_dir', ''))
 ttk.Button(main_frame, text="Browse", command=lambda: browse_directory(save_entry)).grid(row=2, column=2, padx=5, pady=5)
 
 # Start Button
-ttk.Button(main_frame, text="Start Scraping", command=start_scraping).grid(row=3, column=0, columnspan=3, pady=20)
+ttk.Button(main_frame, text="Start Scraping", command=start_scraping).grid(row=3, column=0, columnspan=3, pady=10)
+
+# Clear Console and Open Save Location buttons
+button_frame = ttk.Frame(main_frame)
+button_frame.grid(row=4, column=0, columnspan=3, pady=10)
+
+ttk.Button(button_frame, text="Clear Console", command=clear_console).grid(row=0, column=0, padx=5)
+ttk.Button(button_frame, text="Open Save Location", command=open_save_location).grid(row=0, column=1, padx=5)
 
 # Console output
-ttk.Label(main_frame, text="Console Output:").grid(row=4, column=0, columnspan=3, padx=5, pady=5)
+ttk.Label(main_frame, text="Console Output:").grid(row=5, column=0, columnspan=3, padx=5, pady=5)
 console = scrolledtext.ScrolledText(main_frame, width=70, height=15, wrap=tk.WORD)
-console.grid(row=5, column=0, columnspan=3, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+console.grid(row=6, column=0, columnspan=3, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
 console.config(state=tk.NORMAL)
+console.tag_config('success', foreground='green')
+console.tag_config('error', foreground='red')
 
 # Configure row and column weights
-for i in range(6):
+for i in range(7):  # Increased to 7 to account for the new row
     main_frame.rowconfigure(i, weight=1)
 for i in range(3):
     main_frame.columnconfigure(i, weight=1)

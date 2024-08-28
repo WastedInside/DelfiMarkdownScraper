@@ -172,7 +172,7 @@ def browse_file(entry):
     if file_path:
         entry.delete(0, tk.END)
         entry.insert(0, file_path)
-        save_settings({'last_urls_file': file_path, 'last_save_dir': save_entry.get(), 'last_config': config_var.get()})
+        save_settings({'last_urls_file': file_path, 'last_save_dir': save_entry.get()})
 
 def browse_directory(entry):
     dir_path = filedialog.askdirectory()
